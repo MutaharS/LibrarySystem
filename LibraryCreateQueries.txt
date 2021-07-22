@@ -1,0 +1,92 @@
+-- Create Table Queries
+CREATE TABLE Books(ISBN CHAR(13) PRIMARY KEY,  Title VARCHAR(200), Subject VARCHAR(50), DatePublished DATE);
+
+CREATE TABLE Authors(AuthorID CHAR(9) PRIMARY KEY, FirstName VARCHAR(100), LastName VARCHAR(100), DOB Date);
+
+CREATE TABLE LibraryUsers(
+	Email VARCHAR(100) PRIMARY KEY,
+	Password CHAR(128),  
+	FirstName VARCHAR(100), 
+	LastName VARCHAR(100), 
+	DOB DATE,
+	IsAdmin CHAR(1)
+);
+
+CREATE TABLE Inventory(
+	ISBN CHAR(13) PRIMARY KEY NOT NULL,
+	Quantity INTEGER,
+	CONSTRAINT book_fk FOREIGN KEY(ISBN) REFERENCES Books(ISBN) ON DELETE CASCADE,
+	CONSTRAINT quantity_check CHECK (quantity>=0)
+);
+
+------------------- Relationship Tables -------------------------
+
+CREATE TABLE WrittenBy(
+	AuthorID CHAR(9) NOT NULL,
+	ISBN CHAR(13)    REFERENCES Books ON DELETE CASCADE, 
+	CONSTRAINT wb_pk PRIMARY KEY(AuthorID, ISBN),
+	CONSTRAINT auth_fk FOREIGN KEY (AuthorID)
+	REFERENCES Authors(AuthorID) ON DELETE CASCADE
+);
+
+CREATE TABLE Borrow(
+	ISBN CHAR(13) 	    REFERENCES Books ON DELETE CASCADE,
+	Email VARCHAR(100)  REFERENCES LibraryUsers ON DELETE CASCADE,
+	BorrowDate DATE,
+	DueDate DATE,
+	CONSTRAINT bw_pk PRIMARY KEY(Email, ISBN)
+);
+
+------------------- Copy into Table Queries -------------------------
+
+\copy Books(ISBN, Title, Subject, DatePublished) FROM '/Users/syeda/Desktop/COP4710FinalProject/Books.csv' WITH DELIMITER ',' CSV HEADER;
+
+\copy Authors(AuthorID, FirstName, LastName, DOB) FROM '/Users/syeda/Desktop/COP4710FinalProject/Authors.csv' WITH DELIMITER ',' CSV HEADER;
+
+\copy WrittenBy(AuthorID, ISBN) FROM '/Users/syeda/Desktop/COP4710FinalProject/WrittenBy.csv' WITH DELIMITER ',' CSV HEADER;
+
+\copy Inventory(ISBN, Quantity) FROM '/Users/syeda/Desktop/COP4710FinalProject/Inventory.csv' WITH DELIMITER ',' CSV HEADER;
+
+-- TRUNCATE TABLE WrittenBy CASCADE;TRUNCATE TABLE Books CASCADE;TRUNCATE TABLE Authors 
+-- CASCADE; TRUNCATE TABLE Inventory CASCADE;
+
+------------------- Creating Users and Privileges -------------------------
+
+CREATE USER librarian with encrypted password 'password';
+GRANT CONNECT ON DATABASE bookstore TO librarian;
+GRANT SELECT,INSERT,UPDATE,DELETE ON ALL TABLES IN SCHEMA public TO librarian;
+
+CREATE USER patron with encrypted password 'password';
+GRANT CONNECT ON DATABASE bookstore TO patron;
+GRANT SELECT ON ALL TABLES IN SCHEMA public TO patron;
+GRANT INSERT ON LibraryUsers TO patron;
+
+----------------------- Queries -------------------------
+cursor.execute("SELECT * FROM LibraryUsers WHERE email = %s", (email,))
+cursor.execute("SELECT email,isadmin FROM LibraryUsers WHERE email = %s AND password = %s",(email,password))
+cursor.execute("SELECT * FROM Books WHERE isbn = %s", (isbn,))
+cursor.execute("SELECT * FROM Inventory WHERE isbn = %s", (book['isbn'],))
+cursor.execute("SELECT duedate FROM Borrow WHERE isbn = %s ORDER BY duedate LIMIT 1", (book['isbn'],))
+cursor.execute("SELECT * FROM Borrow WHERE email = %s AND isbn = %s", (email,isbn))
+cursor.execute("SELECT DISTINCT subject FROM Books")
+cursor.execute("SELECT Title, FirstName, LastName, ISBN 
+		FROM Books NATURAL JOIN WrittenBy NATURAL JOIN Authors 
+		WHERE subject = %s", (subject,))
+cursor.execute("SELECT Title, FirstName, LastName, subject, datepublished, ISBN 
+		FROM Books NATURAL JOIN WrittenBy NATURAL JOIN Authors 
+		WHERE lastname = %s ORDER BY firstname,lastname", (author_last_name,))
+cursor.execute("SELECT title,duedate FROM Borrow NATURAL JOIN Books WHERE email = %s", (email,))
+cursor.execute("SELECT Title, FirstName, LastName, ISBN 
+		FROM Books NATURAL JOIN WrittenBy NATURAL JOIN Authors 
+              WHERE subject = %s ORDER BY RANDOM() LIMIT 1", (subject,))
+cursor.execute("SELECT *,CURRENT_DATE FROM Borrow WHERE duedate < CURRENT_DATE")
+
+----------------------- Views -------------------------
+CREATE VIEW LoginView AS SELECT email,password,isadmin FROM LibraryUsers;
+
+
+----------------------- Indexes -------------------------
+CREATE INDEX email_index ON LibraryUsers USING HASH (email);
+CREATE INDEX subject_index ON Books USING HASH (subject);
+CREATE INDEX isbn_index ON Books USING HASH (isbn);
+CREATE INDEX lastname_index ON Authors USING HASH (lastname); 

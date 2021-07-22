@@ -1,0 +1,15 @@
+INSERT INTO LibraryUsers(	
+    Email,
+	Password,  
+	FirstName, 
+	LastName, 
+	DOB,
+	IsAdmin
+) VALUES ('librarian@usf.edu',
+          'b918f2d307ab1bae7c851932fae586bd80b5bbb0f58f5128d3df26a6e68703c0f8906737600c557f8dc8e57756d761e7c12b164b3de0dd3f336a9dac177083f8',
+          'Syed',
+          'Shah',
+          '08/14/1997',
+          'Y'
+          );
+
